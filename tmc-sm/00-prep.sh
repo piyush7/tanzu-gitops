@@ -67,6 +67,7 @@ if [ "$1" = "prep" ]; then
     imgpkg copy -i projects.registry.vmware.com/tanzu_meta_pocs/monitoring/prom/node-exporter:latest --to-tar=airgapped-files/images/node-exporter.tar --concurrency 30
     imgpkg copy -i projects.registry.vmware.com/tanzu_meta_pocs/monitoring/prom/prometheus:latest --to-tar=airgapped-files/images/prometheus.tar --concurrency 30
     imgpkg copy -i projects.registry.vmware.com/tanzu_meta_pocs/monitoring/grafana/grafana:latest --to-tar=airgapped-files/images/grafana.tar --concurrency 30
+    imgpkg copy -i projects.registry.vmware.com/tanzu_meta_pocs/tools/utils:latest --to-tar=airgapped-files/images/utils.tar --concurrency 30
     wget --content-disposition -P airgapped-files/ova "https://via.vmw.com/tanzu-poc-harbor-int" && mv airgapped-files/ova/photon-4-harbor-v2.6.3+vmware.1-9c5c48c408fac6cef43c4752780c4b048e42d562.ova airgapped-files/ova/photon-4-harbor-v2.6.3.ova
     wget --content-disposition -P airgapped-files/ova "https://via.vmw.com/tanzu-poc-sivt"
     #export k8s_versions=(v1.23.8 v1.23.15 v1.24.9)
@@ -169,6 +170,7 @@ elif [ "$1" = "import-packages" ]; then
     imgpkg copy --tar airgapped-files/images/node-exporter.tar --to-repo $HARBOR_URL/apps/node-exporter --include-non-distributable-layers
     imgpkg copy --tar airgapped-files/images/prometheus.tar --to-repo $HARBOR_URL/apps/prometheus --include-non-distributable-layers
     imgpkg copy --tar airgapped-files/images/grafana.tar --to-repo $HARBOR_URL/apps/grafana --include-non-distributable-layers
+    imgpkg copy --tar airgapped-files/images/utils.tar --to-repo $HARBOR_URL/apps/utils --include-non-distributable-layers
     #for file in airgapped-files/images/inspection/*.tar; do
     #    if [ -f "$file" ]; then
     #        section="${file%%:*}"
