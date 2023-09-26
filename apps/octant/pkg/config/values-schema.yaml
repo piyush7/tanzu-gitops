@@ -1,0 +1,18 @@
+#@data/values-schema
+---
+#@schema/desc "namespace to be created."
+namespace:
+  #@schema/desc "admin will create cluster-admin"
+  admin: ["admin"]
+  #@schema/desc "dev will create namespace scoped"
+  dev: [""]
+#@schema/desc "ingress details"
+ingress:
+  #@schema/desc "fqdn to create ingress resources"
+  fqdn: tmc.example.com
+  #@schema/desc "use this if there is ingress classname to be used"
+  class_name: ""
+#@schema/desc "certificate"
+cert:
+  #@schema/desc "clusterissuer name"
+  ClusterIssuer: local-issuer

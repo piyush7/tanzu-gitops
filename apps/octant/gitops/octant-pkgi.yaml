@@ -1,0 +1,111 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: packages
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: octant-values
+  namespace: packages
+stringData:
+  values.yaml: |-
+    namespace:
+      admin: ["admin"]
+      dev: ["developer"]
+    ingress:
+      fqdn: tmc.h2o-4-18526.h2o.vmware.com
+      class_name: ""
+    cert:
+      ClusterIssuer: local-issuer
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  annotations:
+    tkg.tanzu.vmware.com/tanzu-package: octant
+    kapp.k14s.io/update-strategy: "fallback-on-replace"
+  name: octant-sa
+  namespace: packages
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  annotations:
+    tkg.tanzu.vmware.com/tanzu-package: octant
+    kapp.k14s.io/update-strategy: "fallback-on-replace"
+  name: octant-cluster-role
+rules:
+- apiGroups:
+  - '*'
+  resources:
+  - '*'
+  verbs:
+  - '*'
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  annotations:
+    tkg.tanzu.vmware.com/tanzu-package: octant
+    kapp.k14s.io/update-strategy: "fallback-on-replace"
+  name: octant-cluster-rolebinding
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: octant-cluster-role
+subjects:
+- kind: ServiceAccount
+  name: octant-sa
+  namespace: packages
+---
+apiVersion: data.packaging.carvel.dev/v1alpha1
+kind: Package
+metadata:
+  name: octant.vmware.com.1.0.0+0
+  namespace: packages
+spec:
+  refName: octant.vmware.com
+  version: 1.0.0+0
+  releaseNotes: |
+        Initial release of the octant package
+  licenses:
+  - "Apache 2.0"
+  releasedAt: 2023-09-26T04:45:00Z
+  template:
+    spec:
+      fetch:
+      - imgpkgBundle:
+          image: projects.registry.vmware.com/tanzu_meta_pocs/packages/octant:1.0.0
+      template:
+      - ytt:
+          paths:
+          - "config/"
+      - kbld:
+          paths:
+          - "-"
+          - ".imgpkg/images.yml"
+      deploy:
+      - kapp: {}
+---
+apiVersion: packaging.carvel.dev/v1alpha1
+kind: PackageInstall
+metadata:
+  annotations:
+    tkg.tanzu.vmware.com/tanzu-package-ClusterRole: octant-cluster-role
+    tkg.tanzu.vmware.com/tanzu-package-ClusterRoleBinding: octant-cluster-rolebinding
+    tkg.tanzu.vmware.com/tanzu-package-ServiceAccount: octant-sa
+    kapp.k14s.io/update-strategy: "fallback-on-replace"
+    kapp.k14s.io/create-strategy: "fallback-on-replace"
+  name: octant-pkgi
+  namespace: packages
+spec:
+  serviceAccountName: octant-sa
+  packageRef:
+    refName: octant.vmware.com
+    versionSelection:
+      constraints: 1.0.0+0
+      prereleases: {}
+  values:
+  - secretRef:
+      name: octant-values

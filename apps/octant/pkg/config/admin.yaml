@@ -1,0 +1,472 @@
+#@ load("@ytt:data", "data")
+---
+#@ dev_namespace = data.values.namespace.dev
+#@ admin_namespace = data.values.namespace.admin
+#@ ClusterIssuer = data.values.cert.ClusterIssuer
+#@ tld_domain = data.values.ingress.fqdn
+
+#@ for i in range(len(admin_namespace)):
+---
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  creationTimestamp: null
+  name: #@ admin_namespace[i]
+spec: {}
+status: {}
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: #@ "octant-{}-sa".format(admin_namespace[i])
+  namespace: #@ admin_namespace[i]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: #@ "admin-octant-crb-{}".format(admin_namespace[i])
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: cluster-admin
+subjects:
+- kind: ServiceAccount
+  name: #@ "octant-{}-sa".format(admin_namespace[i])
+  namespace: #@ admin_namespace[i]
+- apiGroup: rbac.authorization.k8s.io
+  kind: User
+  name: #@ "sso:{}@vsphere.local".format(admin_namespace[i])
+---
+apiVersion: v1
+automountServiceAccountToken: true
+kind: ServiceAccount
+metadata:
+  name: dex
+  namespace: #@ admin_namespace[i]
+  labels:
+    app.kubernetes.io/name: dex
+    app.kubernetes.io/instance: dex
+---
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: dex-tls
+  namespace: #@ admin_namespace[i]
+spec:
+  commonName: #@ "dex-{}.{}".format(admin_namespace[i],tld_domain)
+  dnsNames:
+  - #@ "dex-{}.{}".format(admin_namespace[i],tld_domain)
+  issuerRef:
+    kind: ClusterIssuer
+    name: #@ ClusterIssuer
+  secretName: dex-tls
+---
+apiVersion: projectcontour.io/v1
+kind: HTTPProxy
+metadata:
+  name: dex
+  namespace: #@ admin_namespace[i]
+spec:
+  #@ if hasattr(data.values.ingress, "class_name") and data.values.ingress.class_name != "":
+  ingressClassName: #@ data.values.ingress.class_name
+  #@ end
+  virtualhost:
+    fqdn: #@ "dex-{}.{}".format(admin_namespace[i],tld_domain)
+    tls:
+      secretName: dex-tls
+  tcpproxy:
+    services:
+    - name: dex
+      port: 5554
+      protocol: tls
+---
+#@ issuer="https://dex-{}.{}".format(admin_namespace[i],tld_domain)
+#@ redirectURi="https://pinniped-supervisor.{}/provider/pinniped/callback".format(tld_domain)
+#@ redirectURiOctant="https://octant-{}.{}/oauth2/callback".format(admin_namespace[i],tld_domain)
+apiVersion: v1
+kind: Secret
+metadata:
+  name: dex
+  namespace: #@ admin_namespace[i]
+type: Opaque
+stringData:
+#@yaml/text-templated-strings
+  config.yaml: |
+    issuer: (@= issuer @)
+    staticClients:
+    - id: octant-auth
+      redirectURIs:
+      - (@= redirectURiOctant @)
+      name: 'octant-auth'
+      secret: secretvalue
+    oauth2:
+      skipApprovalScreen: true
+    storage:
+      type: memory
+    web:
+      https: 0.0.0.0:5554
+      tlsCert: /certs/tls.crt
+      tlsKey: /certs/tls.key
+    enablePasswordDB: true
+    staticPasswords:
+    - email: (@= admin_namespace[i] @)
+      hash: $2y$12$91L9srUldcD/to9NGN6iSu/be2dy4eqMcLotBktgufJFLSrrCtcWO
+      userID: 08a8684b-db88-4b73-90a9-3cd1661f5466
+      username: (@= admin_namespace[i] @)
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: #@ "dex-role-{}".format(admin_namespace[i])
+  namespace: #@ admin_namespace[i]
+  labels:
+    app.kubernetes.io/name: dex
+    app.kubernetes.io/instance: dex
+rules:
+- apiGroups:
+  - apiextensions.k8s.io
+  resources:
+  - customresourcedefinitions
+  verbs:
+  - list
+  - create
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: #@ "dex-cluster-{}".format(admin_namespace[i])
+  namespace: #@ admin_namespace[i]
+  labels:
+    app.kubernetes.io/name: dex
+    app.kubernetes.io/instance: dex
+roleRef:
+  kind: ClusterRole
+  apiGroup: rbac.authorization.k8s.io
+  name: #@ "dex-role-{}".format(admin_namespace[i])
+subjects:
+- kind: ServiceAccount
+  namespace: default
+  name: dex
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: dex
+  namespace: #@ admin_namespace[i]
+  labels:
+    app.kubernetes.io/name: dex
+    app.kubernetes.io/instance: dex
+rules:
+- apiGroups:
+  - dex.coreos.com
+  resources:
+  - '*'
+  verbs:
+  - '*'
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: dex
+  namespace: #@ admin_namespace[i]
+  labels:
+    helm.sh/chart: dex-0.12.1
+    app.kubernetes.io/name: dex
+    app.kubernetes.io/instance: dex
+roleRef:
+  kind: Role
+  apiGroup: rbac.authorization.k8s.io
+  name: dex
+subjects:
+- kind: ServiceAccount
+  namespace: default
+  name: dex
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: dex
+  namespace: #@ admin_namespace[i]
+  labels:
+    app.kubernetes.io/name: dex
+    app.kubernetes.io/instance: dex
+spec:
+  type: ClusterIP
+  ports:
+  - name: http
+    port: 5556
+    targetPort: http
+    protocol: TCP
+    appProtocol: http
+  - name: https
+    port: 5554
+    targetPort: https
+    protocol: TCP
+    appProtocol: https
+  - name: telemetry
+    port: 5558
+    targetPort: telemetry
+    protocol: TCP
+    appProtocol: http
+  selector:
+    app.kubernetes.io/name: dex
+    app.kubernetes.io/instance: dex
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: dex
+  namespace: #@ admin_namespace[i]
+  labels:
+    app.kubernetes.io/name: dex
+    app.kubernetes.io/instance: dex
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: dex
+      app.kubernetes.io/instance: dex
+  template:
+    metadata:
+      annotations:
+        checksum/config: 5620ea83fa0ca807c735c2af6d75c95da335d8fedd92a6f166b34e1a614d03a2
+      labels:
+        app.kubernetes.io/name: dex
+        app.kubernetes.io/instance: dex
+    spec:
+      serviceAccountName: dex
+      securityContext: {}
+      containers:
+      - name: dex
+        securityContext: {}
+        image: projects.registry.vmware.com/tanzu_meta_pocs/tools/dex:v2.35.3
+        imagePullPolicy: IfNotPresent
+        args:
+        - dex
+        - serve
+        - --web-http-addr
+        - 0.0.0.0:5556
+        - --web-https-addr
+        - 0.0.0.0:5554
+        - --telemetry-addr
+        - 0.0.0.0:5558
+        - /etc/dex/config.yaml
+        ports:
+        - name: http
+          containerPort: 5556
+          protocol: TCP
+        - name: https
+          containerPort: 5554
+          protocol: TCP
+        - name: telemetry
+          containerPort: 5558
+          protocol: TCP
+        livenessProbe:
+          httpGet:
+            path: /healthz/live
+            port: telemetry
+        readinessProbe:
+          httpGet:
+            path: /healthz/ready
+            port: telemetry
+        resources: {}
+        volumeMounts:
+        - name: config
+          mountPath: /etc/dex
+          readOnly: true
+        - mountPath: /certs
+          name: certs
+          readOnly: true
+      volumes:
+      - name: config
+        secret:
+          secretName: dex
+      - name: certs
+        secret:
+          secretName: dex-tls
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: octant-dashboard
+  namespace: #@ admin_namespace[i]
+  labels:
+    app.kubernetes.io/name: octant
+    app.kubernetes.io/instance: octant-dashboard
+spec:
+  type: ClusterIP
+  ports:
+  - port: 8000
+    targetPort: http
+    protocol: TCP
+    name: http
+  selector:
+    app.kubernetes.io/name: octant
+    app.kubernetes.io/instance: octant-dashboard
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: octant-dashboard
+  namespace: #@ admin_namespace[i]
+  labels:
+    app.kubernetes.io/name: octant
+    app.kubernetes.io/instance: octant-dashboard
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: octant
+      app.kubernetes.io/instance: octant-dashboard
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: octant
+        app.kubernetes.io/instance: octant-dashboard
+    spec:
+      serviceAccountName: #@ "octant-{}-sa".format(admin_namespace[i])
+      securityContext:
+        fsGroup: 2000
+      initContainers: null
+      containers:
+      - name: octant
+        securityContext:
+          capabilities:
+            drop:
+            - ALL
+          readOnlyRootFilesystem: true
+          runAsNonRoot: true
+          runAsUser: 1000
+        image: projects.registry.vmware.com/tanzu_meta_pocs/tools/octant-dashboard:v0.25.1
+        imagePullPolicy: IfNotPresent
+        ports:
+        - name: http
+          containerPort: 8000
+          protocol: TCP
+        env:
+        - name: OCTANT_HTTP_PORT
+          value: "8000"
+        - name: OCTANT_PLUGINS_DIR
+          value: /home/octant/.config/octant/plugins/
+        - name: OCTANT_PLUGINS_LIST
+          value: ""
+        livenessProbe:
+          httpGet:
+            path: /
+            port: 8000
+          initialDelaySeconds: 15
+          periodSeconds: 10
+        readinessProbe:
+          httpGet:
+            path: /
+            port: 8000
+        volumeMounts:
+        - name: tmp-mount
+          mountPath: /tmp
+        - name: plugins-mount
+          mountPath: /home/octant/.config/octant/plugins/
+        resources: {}
+      volumes:
+      - name: tmp-mount
+        emptyDir: {}
+      - name: plugins-mount
+        emptyDir: {}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    name: octant-auth-proxy
+  name: octant-auth-proxy
+  namespace: #@ admin_namespace[i]
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      name: octant-auth-proxy
+  strategy:
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 1
+    type: RollingUpdate
+  template:
+    metadata:
+      labels:
+        name: octant-auth-proxy
+    spec:
+      containers:
+      - args:
+        - --provider=oidc
+        - --client-id=octant-auth
+        - --client-secret=secretvalue
+        - #@ "--oidc-issuer-url=https://dex-{}.{}".format(admin_namespace[i],tld_domain)
+        - --cookie-secret=bm90LWdvb2Qtc2VjcmV0Cg==
+        - --cookie-refresh=2m
+        - --upstream=http://octant-dashboard:8000/
+        - --http-address=0.0.0.0:3000
+        - --email-domain="*"
+        - --pass-basic-auth=false
+        - --pass-access-token=true
+        - --pass-authorization-header=true
+        - --proxy-prefix=/oauth2
+        - --ssl-insecure-skip-verify
+        image: projects.registry.vmware.com/tanzu_meta_pocs/tools/oauth2-proxy:7.2.1
+        imagePullPolicy: IfNotPresent
+        name: octant-auth-proxy
+---
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    name: octant-auth-proxy
+  name: octant-auth-proxy
+  namespace: #@ admin_namespace[i]
+spec:
+  ports:
+  - name: http
+    port: 3000
+    protocol: TCP
+    targetPort: 3000
+  selector:
+    name: octant-auth-proxy
+  sessionAffinity: None
+  type: ClusterIP
+---
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: octant-oauth-tls
+  namespace: #@ admin_namespace[i]
+spec:
+  commonName: #@ "octant-{}.{}".format(admin_namespace[i],tld_domain)
+  dnsNames:
+  - #@ "octant-{}.{}".format(admin_namespace[i],tld_domain)
+  duration: 2160h0m0s
+  issuerRef:
+    kind: ClusterIssuer
+    name: #@ ClusterIssuer
+  secretName: octant-oauth-tls
+---
+apiVersion: projectcontour.io/v1
+kind: HTTPProxy
+metadata:
+  name: octant-oauth
+  namespace: #@ admin_namespace[i]
+spec:
+  #@ if hasattr(data.values.ingress, "class_name") and data.values.ingress.class_name != "":
+  ingressClassName: #@ data.values.ingress.class_name
+  #@ end
+  routes:
+  - conditions:
+    - prefix: /
+    enableWebsockets: true
+    services:
+    - name: octant-auth-proxy
+      port: 3000
+  virtualhost:
+    fqdn: #@ "octant-{}.{}".format(admin_namespace[i],tld_domain)
+    tls:
+      secretName: octant-oauth-tls
+#@ end
+---

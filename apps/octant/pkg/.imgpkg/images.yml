@@ -1,0 +1,25 @@
+---
+apiVersion: imgpkg.carvel.dev/v1alpha1
+images:
+- annotations:
+    kbld.carvel.dev/id: projects.registry.vmware.com/tanzu_meta_pocs/tools/dex:v2.35.3
+    kbld.carvel.dev/origins: |
+      - resolved:
+          tag: v2.35.3
+          url: projects.registry.vmware.com/tanzu_meta_pocs/tools/dex:v2.35.3
+  image: projects.registry.vmware.com/tanzu_meta_pocs/tools/dex@sha256:9619f4f2b3efd5245d709a95d97aec51315611a0a0b97c00ab4ee27800e6197a
+- annotations:
+    kbld.carvel.dev/id: projects.registry.vmware.com/tanzu_meta_pocs/tools/oauth2-proxy:7.2.1
+    kbld.carvel.dev/origins: |
+      - resolved:
+          tag: 7.2.1
+          url: projects.registry.vmware.com/tanzu_meta_pocs/tools/oauth2-proxy:7.2.1
+  image: projects.registry.vmware.com/tanzu_meta_pocs/tools/oauth2-proxy@sha256:c2b9b03d34e03bd17b5c55698bb73d12b0cd392faf8fb1d54bfb7cdf0998a629
+- annotations:
+    kbld.carvel.dev/id: projects.registry.vmware.com/tanzu_meta_pocs/tools/octant-dashboard:v0.25.1
+    kbld.carvel.dev/origins: |
+      - resolved:
+          tag: v0.25.1
+          url: projects.registry.vmware.com/tanzu_meta_pocs/tools/octant-dashboard:v0.25.1
+  image: projects.registry.vmware.com/tanzu_meta_pocs/tools/octant-dashboard@sha256:e677a0469c96258c615dd76f4c726830b9b427afe87723a475c1eb7fd2e3486c
+kind: ImagesLock
