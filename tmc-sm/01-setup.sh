@@ -87,6 +87,8 @@ elif [[ "$vCenter_version" == "8.0.1" ]]; then
         echo "vCenter version: " "$vCenter_version "/ Build" $vCenter_build, upgrade vCenter. Exiting"
         exit 1
     fi
+elif [[ "$vCenter_version" == "8.0.2" ]]; then
+    echo $vCenter_version $vCenter_build
 else
     echo "wrong vcenter build/version. Exiting"
     exit 1
@@ -232,23 +234,25 @@ while [[ $(kubectl get pkgi tanzu-mission-control -n tmc-local -o=jsonpath='{.st
     echo "Waiting for tanzu-mission-control to be ready: " $(kubectl --context=$tmc_cluster get pkgi tanzu-mission-control -n tmc-local -o=jsonpath='{.status.conditions[0].type}')
     sleep 10
 done
-if [ "$ldap_auth" = "true" ]; then
-    echo "#########################################################################################Deploying OpenLDAP#"
-    ytt -f templates/values-template.yaml -f templates/common/openldap.yaml | kubectl --context=$tmc_cluster apply -f -
-    kubectl --context=$tmc_cluster apply -f templates/common/ldap-overlay.yaml
-    while [[ $(kubectl --context=$tmc_cluster get deployment openldap -n openldap -o=jsonpath='{.status.conditions[?(@.type=="Available")].status}') != "True" ]]; do
-        echo "Waiting for openldap to be ready"
-        export openldapCaCert=$(kubectl --context=$tmc_cluster get secret ldap -n openldap -o json | jq -r '.data."ca.crt"')
-        sleep 10
-    done
-    sleep 30
+
+echo "#########################################################################################Deploying OpenLDAP#"
+ytt -f templates/values-template.yaml -f templates/common/openldap.yaml | kubectl --context=$tmc_cluster apply -f -
+kubectl --context=$tmc_cluster apply -f templates/common/ldap-overlay.yaml
+#!kubectl --context=$tmc_cluster apply -f templates/common/dex-overlay.yaml
+while [[ $(kubectl --context=$tmc_cluster get deployment openldap -n openldap -o=jsonpath='{.status.conditions[?(@.type=="Available")].status}') != "True" ]]; do
+    echo "Waiting for openldap to be ready"
     export openldapCaCert=$(kubectl --context=$tmc_cluster get secret ldap -n openldap -o json | jq -r '.data."ca.crt"')
-    echo "######################################################################################Applying LDAP Overlay#"
-    ytt -f  templates/common/ldap-auth.yaml --data-value ldapCa=$openldapCaCert | kubectl --context=$tmc_cluster apply -f -
-    kubectl --context=$tmc_cluster annotate packageinstalls tanzu-mission-control -n tmc-local ext.packaging.carvel.dev/ytt-paths-from-secret-name.0=tmc-overlay-override
-    kubectl --context=$tmc_cluster patch -n tmc-local --type merge pkgi tanzu-mission-control --patch '{"spec": {"paused": true}}'
-    kubectl --context=$tmc_cluster patch -n tmc-local --type merge pkgi tanzu-mission-control --patch '{"spec": {"paused": false}}'
-fi
+    sleep 10
+done
+sleep 30
+export openldapCaCert=$(kubectl --context=$tmc_cluster get secret ldap -n openldap -o json | jq -r '.data."ca.crt"')
+echo "######################################################################################Applying LDAP Overlay#"
+ytt -f  templates/common/ldap-auth.yaml --data-value ldapCa=$openldapCaCert | kubectl --context=$tmc_cluster apply -f -
+kubectl --context=$tmc_cluster annotate packageinstalls tanzu-mission-control -n tmc-local ext.packaging.carvel.dev/ytt-paths-from-secret-name.0=tmc-overlay-override
+#!kubectl --context=$tmc_cluster annotate packageinstalls tanzu-mission-control -n tmc-local ext.packaging.carvel.dev/ytt-paths-from-secret-name.2=tmc-overlay-override-dex
+kubectl --context=$tmc_cluster patch -n tmc-local --type merge pkgi tanzu-mission-control --patch '{"spec": {"paused": true}}'
+kubectl --context=$tmc_cluster patch -n tmc-local --type merge pkgi tanzu-mission-control --patch '{"spec": {"paused": false}}'
+
 
 kubectx $wcp_ip
 export caCert=$(yq eval '.trustedCAs."custom-ca.pem"' ./values.yaml)
