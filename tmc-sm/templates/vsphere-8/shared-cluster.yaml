@@ -2,7 +2,9 @@
 #@ load("@ytt:base64", "base64")
 ---
 #@ def kapp_version():
-#@   if data.values.shared_cluster.k8s_version == "v1.25.7---vmware.3-fips.1-tkg.1":
+#@   if data.values.shared_cluster.k8s_version == "v1.26.5---vmware.2-fips.1-tkg.1":
+#@   return "kapp-controller.tanzu.vmware.com.0.45.2+vmware.1-tkg.1"
+#@   elif data.values.shared_cluster.k8s_version == "v1.25.7---vmware.3-fips.1-tkg.1":
 #@   return "kapp-controller.tanzu.vmware.com.0.41.7+vmware.1-tkg.1-vmware"
 #@   elif data.values.shared_cluster.k8s_version == "v1.24.9---vmware.1-tkg.4":
 #@   return "kapp-controller.tanzu.vmware.com.0.41.5+vmware.1-tkg.1"
@@ -10,8 +12,6 @@
 #@   return "kapp-controller.tanzu.vmware.com.0.41.5+vmware.1-tkg.1"
 #@   elif data.values.shared_cluster.k8s_version == "v1.23.8---vmware.3-tkg.1":
 #@   return "kapp-controller.tanzu.vmware.com.0.41.5+vmware.1-tkg.1"
-#@   else:
-#@   return "kapp-controller.tanzu.vmware.com.0.41.7+vmware.1-tkg.1-vmware"
 #@   end
 #@ end
 ---
