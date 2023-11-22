@@ -4,11 +4,15 @@ apiVersion: v1
 kind: Namespace
 metadata:
   name: kapp-controller
+  labels:
+    pod-security.kubernetes.io/enforce: privileged
 ---
 apiVersion: v1
 kind: Namespace
 metadata:
   name: kapp-controller-packaging-global
+  labels:
+    pod-security.kubernetes.io/enforce: privileged
 ---
 apiVersion: v1
 kind: ConfigMap

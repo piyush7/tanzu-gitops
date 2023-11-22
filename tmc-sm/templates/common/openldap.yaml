@@ -9,6 +9,8 @@ kind: Namespace
 metadata:
   creationTimestamp: null
   name: openldap
+  labels:
+    pod-security.kubernetes.io/enforce: privileged
 spec: {}
 status: {}
 ---

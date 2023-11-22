@@ -17,6 +17,8 @@ kind: Namespace
 metadata:
   creationTimestamp: null
   name: dex
+  labels:
+    pod-security.kubernetes.io/enforce: privileged
 spec: {}
 status: {}
 ---

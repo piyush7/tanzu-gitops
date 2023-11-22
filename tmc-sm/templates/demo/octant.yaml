@@ -7,6 +7,8 @@ kind: Namespace
 metadata:
   creationTimestamp: null
   name: admin
+  labels:
+    pod-security.kubernetes.io/enforce: privileged
 spec: {}
 status: {}
 ---

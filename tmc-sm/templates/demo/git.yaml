@@ -66,7 +66,7 @@ spec:
     spec:
       fetch:
       - imgpkgBundle:
-          image: #@ "{}/apps/gitea:1.15.3_2".format(data.values.harbor.fqdn)
+          image: #@ "{}/apps/gitea:1.15.3_3".format(data.values.harbor.fqdn)
       template:
       - ytt:
           paths:

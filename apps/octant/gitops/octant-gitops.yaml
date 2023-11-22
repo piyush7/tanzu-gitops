@@ -12,6 +12,8 @@ kind: Namespace
 metadata:
   creationTimestamp: null
   name: #@ dev_namespace[i]
+  labels:
+    pod-security.kubernetes.io/enforce: privileged
 spec: {}
 status: {}
 ---
@@ -514,6 +516,8 @@ kind: Namespace
 metadata:
   creationTimestamp: null
   name: #@ admin_namespace[i]
+  labels:
+    pod-security.kubernetes.io/enforce: privileged
 spec: {}
 status: {}
 ---

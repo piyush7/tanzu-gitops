@@ -39,6 +39,38 @@ subjects:
   name: cert-manager-packages-sa
   namespace: packages
 ---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: overlay-secret-cert-manager
+  namespace: packages
+stringData:
+  patch.yaml: |
+    #@ load("@ytt:overlay", "overlay")
+    #@overlay/match by=overlay.subset({"kind":"Namespace", "metadata":{"name":"cert-manager"}})
+    #@overlay/match-child-defaults missing_ok=True
+    ---
+    metadata:
+      #@overlay/match missing_ok=True
+      labels:
+        #@overlay/merge
+        pod-security.kubernetes.io/enforce: "privileged"
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: overlay-override-cert-manager
+  namespace: packages
+stringData:
+  patch-cert-manager.yaml: |
+    #@ load("@ytt:overlay", "overlay")
+    #@overlay/match by=overlay.subset({"kind":"PackageInstall", "metadata": {"name": "cert-manager"}})
+    ---
+    metadata:
+      annotations:
+        #@overlay/match missing_ok=True
+        ext.packaging.carvel.dev/ytt-paths-from-secret-name.1: overlay-secret-cert-manager
+---
 apiVersion: packaging.carvel.dev/v1alpha1
 kind: PackageInstall
 metadata:
@@ -46,6 +78,7 @@ metadata:
     tkg.tanzu.vmware.com/tanzu-package-ClusterRole: cert-manager-packages-cluster-role
     tkg.tanzu.vmware.com/tanzu-package-ClusterRoleBinding: cert-manager-packages-cluster-rolebinding
     tkg.tanzu.vmware.com/tanzu-package-ServiceAccount: cert-manager-packages-sa
+    ext.packaging.carvel.dev/ytt-paths-from-secret-name.1: overlay-override-cert-manager
     kapp.k14s.io/update-strategy: "fallback-on-replace"
     kapp.k14s.io/create-strategy: "fallback-on-replace"
   name: cert-manager

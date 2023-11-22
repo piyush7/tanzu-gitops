@@ -14,12 +14,13 @@ kind: Secret
 metadata:
   creationTimestamp: null
   name: octant-values
+  namespace: packages
 ---
 apiVersion: v1
 kind: ServiceAccount
 metadata:
   name: octant-deploy-sa
-  namespace: default
+  namespace: packages
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
@@ -48,13 +49,13 @@ roleRef:
 subjects:
 - kind: ServiceAccount
   name: octant-deploy-sa
-  namespace: default
+  namespace: packages
 ---
 apiVersion: kappctrl.k14s.io/v1alpha1
 kind: App
 metadata:
   name: octant-app
-  namespace: default
+  namespace: packages
 spec:
   serviceAccountName: octant-deploy-sa
   deploy:
