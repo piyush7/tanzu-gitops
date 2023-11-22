@@ -1,4 +1,4 @@
-# TMC Self-Managed Opinionated Install Guide
+# TMC Self-Managed Opinionated Install Guide for POCs
 
 Pre requirement before start: 
  - Harbor with proper CA Cert chain.
