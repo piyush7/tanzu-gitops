@@ -314,6 +314,7 @@ fi
 export gitea_pass='VMware1!'
 export gitea_token=$(curl -X POST "https://tanzu:$gitea_pass@git.$tmc_dns/api/v1/users/tanzu/tokens" -H  "accept: application/json" -H "Content-Type: application/json" -d "{\"name\": \"token_name\"}" -k|jq -r .sha1)
 curl -k -X POST "https://git.$tmc_dns/api/v1/user/repos" -H "content-type: application/json" -H "Authorization: token $gitea_token" --data '{"name":"tanzu-gitops","default_branch":"main"}' -k
+curl -k -X POST "https://git.$tmc_dns/api/v1/user/repos" -H "content-type: application/json" -H "Authorization: token $gitea_token" --data '{"name":"bitnami-charts","default_branch":"main"}' -k
 cd airgapped-files/tanzu-gitops
 
 git config --global user.email "tanzu@vmware.com"
@@ -327,6 +328,19 @@ git remote add origin https://git.$tmc_dns/tanzu/tanzu-gitops.git
 echo ""
 echo "git user: tanzu / pass: VMware1!"
 git push -u origin main
+
+cd ..
+unzip bitnami-charts.zip && mv charts-main/ charts/ && cd charts/
+git init
+git checkout -b main
+git add .
+git commit -m "big bang"
+git config http.sslVerify "false"
+git remote add origin https://git.$tmc_dns/tanzu/bitnami-charts.git
+echo ""
+echo "git user: tanzu / pass: VMware1!"
+git push -u origin main
+
 echo "##################################################################################Finished Deploying TMC-SM#"
 echo "-------------------"
 echo Open TMC-SM via this URL: https://$tmc_dns

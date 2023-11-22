@@ -42,6 +42,7 @@ if [ "$1" = "prep" ]; then
     mkdir -p airgapped-files/images/inspection
     mkdir -p airgapped-files/tools
     mkdir -p airgapped-files/ova
+    mkdir -p airgapped-files/chart-images
     wget -P airgapped-files/ "$TMC_SM_DL_URL"
     templates/carvel.sh download
     wget --content-disposition -P airgapped-files/ "https://dl.min.io/client/mc/release/linux-amd64/mc" && chmod +x airgapped-files/mc
@@ -70,6 +71,8 @@ if [ "$1" = "prep" ]; then
     imgpkg copy -i projects.registry.vmware.com/tanzu_meta_pocs/tools/utils:latest --to-tar=airgapped-files/images/utils.tar --concurrency 30
     wget --content-disposition -P airgapped-files/ova "https://via.vmw.com/tanzu-poc-harbor-int" && mv airgapped-files/ova/photon-4-harbor-v2.6.3+vmware.1-9c5c48c408fac6cef43c4752780c4b048e42d562.ova airgapped-files/ova/photon-4-harbor-v2.6.3.ova
     wget --content-disposition -P airgapped-files/ova "https://via.vmw.com/tanzu-poc-sivt"
+    wget --content-disposition -P airgapped-files/ "https://github.com/bitnami/charts/archive/refs/heads/main.zip" && mv airgapped-files/charts-main.zip airgapped-files/bitnami-charts.zip
+    wget --content-disposition -P airgapped-files/ "https://github.com/vmware-labs/distribution-tooling-for-helm/releases/download/v0.2.2/distribution-tooling-for-helm_0.2.2_linux_amd64.tar.gz"
     #export k8s_versions=(v1.23.8 v1.23.15 v1.24.9)
     #wget -P airgapped-files/ "https://github.com/vmware-tanzu/sonobuoy/releases/download/v0.56.16/sonobuoy_0.56.16_linux_amd64.tar.gz"
     #tar -xvf airgapped-files/sonobuoy*.tar.gz
@@ -89,10 +92,12 @@ if [ "$1" = "prep" ]; then
     wget --content-disposition -P airgapped-files/tools/ "https://the.earth.li/~sgtatham/putty/latest/w64/putty.exe"
     wget --content-disposition -P airgapped-files/tools/ "https://winscp.net/download/WinSCP-6.1.1-Setup.exe"
     wget --content-disposition -P airgapped-files/tools/ "https://github.com/notepad-plus-plus/notepad-plus-plus/releases/download/v8.5.4/npp.8.5.4.portable.x64.zip"
+    cd airgapped-files/chart-images && dt wrap oci://docker.io/bitnamicharts/nginx
 elif [ "$1" = "import-cli" ]; then
     echo import-cli
     templates/carvel.sh install
     cp airgapped-files/mc /usr/local/bin/mc
+    cd airgapped-files/ && tar -xvf distribution-tooling-for-helm_0.2.2_linux_amd64.tar.gz && cp dt /usr/local/bin/dt
 elif [ "$1" = "deploy-harbor" ]; then
     echo deploy-harbor
     templates/harbor/harbor-deploy.sh
@@ -146,6 +151,7 @@ elif [ "$1" = "import-packages" ]; then
     tar -xvf airgapped-files/bundle*.tar
     export IMGPKG_REGISTRY_USERNAME=$HARBOR_USER && export IMGPKG_REGISTRY_PASSWORD=$HARBOR_PASS &&  export IMGPKG_REGISTRY_HOSTNAME=$HARBOR_URL
     curl -u "${IMGPKG_REGISTRY_USERNAME}:${IMGPKG_REGISTRY_PASSWORD}" -X POST -H "content-type: application/json" "https://$HARBOR_URL/api/v2.0/projects" -d "{\"project_name\": \"tmc\", \"public\": true, \"storage_limit\": -1 }" -k
+    curl -u "${IMGPKG_REGISTRY_USERNAME}:${IMGPKG_REGISTRY_PASSWORD}" -X POST -H "content-type: application/json" "https://$HARBOR_URL/api/v2.0/projects" -d "{\"project_name\": \"bitnami-chart-images\", \"public\": true, \"storage_limit\": -1 }" -k
     ./tmc-sm push-images harbor --project $HARBOR_URL/tmc --username $HARBOR_USER --password $HARBOR_PASS --concurrency 10
     imgpkg copy --tar airgapped-files/$std_repo.tar --to-repo $HARBOR_URL/tmc/498533941640.dkr.ecr.us-west-2.amazonaws.com/packages/standard/repo --include-non-distributable-layers
     imgpkg copy --tar airgapped-files/images/kapp-controller.tar --to-repo $HARBOR_URL/tmc/kapp-controller --include-non-distributable-layers
@@ -171,6 +177,8 @@ elif [ "$1" = "import-packages" ]; then
     imgpkg copy --tar airgapped-files/images/prometheus.tar --to-repo $HARBOR_URL/apps/prometheus --include-non-distributable-layers
     imgpkg copy --tar airgapped-files/images/grafana.tar --to-repo $HARBOR_URL/apps/grafana --include-non-distributable-layers
     imgpkg copy --tar airgapped-files/images/utils.tar --to-repo $HARBOR_URL/apps/utils --include-non-distributable-layers
+    docker login $HARBOR_URL  -u $HARBOR_USER -p $HARBOR_PASS
+    dt unwrap airgapped-files/chart-images/nginx-15.4.3.wrap.tgz $HARBOR_URL/bitnami-chart-images --yes
     #for file in airgapped-files/images/inspection/*.tar; do
     #    if [ -f "$file" ]; then
     #        section="${file%%:*}"
