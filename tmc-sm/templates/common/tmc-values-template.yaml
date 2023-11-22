@@ -12,6 +12,8 @@ minio:
 contourEnvoy:
   serviceType: LoadBalancer
   loadBalancerIP: #@ "{}".format(data.values.loadbalancer_ip)
+  #!serviceAnnotations:
+  #!  ako.vmware.com/load-balancer-ip: #@ "{}".format(data.values.loadbalancer_ip)
 alertmanager:
   criticalAlertReceiver: {}
   warningAlertReceiver: {}
