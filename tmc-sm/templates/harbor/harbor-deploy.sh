@@ -112,4 +112,4 @@ EOF
 
 govc library.deploy -options ./templates/harbor/harbor.json local-harbor/photon-4-harbor-v2.6.3.ova tanzu-harbor
 govc vm.power -on tanzu-harbor
-govc vm.disk.change -vm=tanzu-harbor -disk.label "Hard disk 2" -size 100G
+govc vm.disk.change -vm=tanzu-harbor -disk.label "Hard disk 2" -size 200G

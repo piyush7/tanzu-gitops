@@ -8,7 +8,7 @@ export GOVC_INSECURE=1
 export MGT_IP_HARBOR=$(yq eval '.harbor.deploy.ip' ./templates/values-template.yaml)
 export HARBOR_PASS=$(yq eval '.harbor.pass' ./templates/values-template.yaml)
 
-govc vm.disk.change -vm=tanzu-harbor -disk.label "Hard disk 2" -size 150G
+govc vm.disk.change -vm=tanzu-harbor -disk.label "Hard disk 2" -size 250G
 
 sshpass -p "${HARBOR_PASS}" ssh -t -q -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null  root@"${MGT_IP_HARBOR}"  << EOFSCRIPT
 lsblk
