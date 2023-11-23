@@ -3,6 +3,7 @@
 harborProject: #@ "{}/tmc".format(data.values.harbor.fqdn)
 dnsZone: #@ "{}".format(data.values.tld_domain)
 clusterIssuer: local-issuer
+size: M
 postgres:
   userPassword: Passw0rd
   maxConnections: 300
